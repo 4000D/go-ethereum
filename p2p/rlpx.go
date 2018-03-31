@@ -121,6 +121,7 @@ func (t *rlpx) close(err error) {
 	t.fd.Close()
 }
 
+// doProtoHandshake runs the protocol handshake using RLPx
 func (t *rlpx) doProtoHandshake(our *protoHandshake) (their *protoHandshake, err error) {
 	// Writing our handshake happens concurrently, we prefer
 	// returning the handshake read error. If the remote side
@@ -141,6 +142,7 @@ func (t *rlpx) doProtoHandshake(our *protoHandshake) (their *protoHandshake, err
 	return their, nil
 }
 
+// readProtocolHandshake exchanges available protocols with p2p peer.
 func readProtocolHandshake(rw MsgReader, our *protoHandshake) (*protoHandshake, error) {
 	msg, err := rw.ReadMsg()
 	if err != nil {

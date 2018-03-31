@@ -178,9 +178,14 @@ func (bc *BlockChain) submitBlock(b *Block) error {
 }
 
 // read transaction with hash of `txHash` from root chain
-func (bc *BlockChain) submitDeposit(txHash common.Hash) {
+func (bc *BlockChain) submitDeposit(txHash common.Hash) error {
 	bc.lock.RLock()
 	defer bc.lock.RUnlock()
 
-	// tx := txHash
+	return nil
+}
+
+func (bc *BlockChain) newDeposit(amount *big.Int, depositor common.Address) error {
+
+	return nil
 }

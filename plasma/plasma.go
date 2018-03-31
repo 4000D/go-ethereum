@@ -170,10 +170,6 @@ loop:
 		case <-pls.quit:
 			break loop
 
-		default:
-			if err := pls.checkNextBlock(); err != nil {
-				log.Info("Plasma failed to fetch next block", err)
-			}
 		}
 	}
 }
@@ -214,6 +210,12 @@ func (pls *Plasma) initialize() error {
 		log.Info("Plasma contract deployed", "hash", tx.Hash(), "contract", address)
 	}
 
+	// run deposit listener
+	err = pls.listenDeposit()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -237,4 +239,46 @@ func (pls *Plasma) isOperator() bool {
 	operatorAddress := crypto.PubkeyToAddress(pls.config.OperatorPrivateKey.PublicKey)
 
 	return operatorAddress == params.PlasmaOperatorAddress
+}
+
+func (pls *Plasma) listenDeposit() error {
+	filterer, err := contract.NewRootChainFilterer(pls.config.ContractAddress, pls.backend)
+
+	if err != nil {
+		return err
+	}
+
+	watchOpts := bind.WatchOpts{
+		Context: pls.context,
+		Start:   &uint64(0),
+	}
+
+	sink := make(chan *contract.RootChainDeposit)
+
+	sub, err := filterer.WatchDeposit(&watchOpts, sink)
+
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		for {
+			select {
+			case deposit := <-sink:
+				log.Info("[Plasma] New deposit on plasma contract", deposit)
+				if err := pls.blockchain.newDeposit(deposit.Amount, deposit.Depositor); err != nil {
+					log.Warn("Failed to add new deposit from rootchain", err)
+				}
+			case <-pls.quit:
+				sub.Unsubscribe()
+				return
+			case err := <-sub.Err():
+				log.Warn("Deposit subscription error", err)
+				sub.Unsubscribe()
+				return
+			}
+		}
+	}()
+
+	return nil
 }
