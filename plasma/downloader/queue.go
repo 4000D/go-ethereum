@@ -62,8 +62,6 @@ func (q *queue) Reset() {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
-	log.Info("[Plasma] Reset queue")
-
 	q.closed = false
 
 	q.pool = make(map[uint64]bool)
@@ -80,14 +78,12 @@ func (q *queue) Close() {
 	q.lock.Lock()
 	q.closed = true
 	q.lock.Unlock()
-	log.Warn("[Plasma] q.Close() awake q.active")
 	q.active.Broadcast()
 }
 
 func (q *queue) Closed() bool { return q.closed }
 
 func (q *queue) enqueue(blkNums []uint64) ([]uint64, error) {
-	log.Info("[Plasma] enqueueing...", "blkNums", blkNums)
 	inserts := make([]uint64, 0, len(blkNums))
 	for _, blkNum := range blkNums {
 
@@ -132,8 +128,6 @@ func (q *queue) PendingBlocks() int {
 func (q *queue) InFlightBlocks() bool {
 	q.lock.Lock()
 	defer q.lock.Unlock()
-
-	log.Info("[Plasma] infliblocks ", "len(q.pending)", len(q.pending))
 
 	return len(q.pending) > 0
 }
@@ -187,7 +181,6 @@ func (q *queue) ExpireBlocks(timeout time.Duration) map[string]int {
 // reason the lock is not obtained in here is because the parameters already need
 // to access the queue, so they already need a lock anyway.
 func (q *queue) expire(timeout time.Duration, pendPool map[string]*fetchRequest, taskQueue *prque.Prque, timeoutMeter metrics.Meter) map[string]int {
-	log.Info("[Plasma] queue.expire timeout", "timeout", timeout.String())
 	// Iterate over the expired requests and return each to the queue
 	expiries := make(map[string]int)
 	for id, request := range pendPool {
@@ -198,7 +191,6 @@ func (q *queue) expire(timeout time.Duration, pendPool map[string]*fetchRequest,
 			// Return any non satisfied requests to the pool
 			if len(request.BlkNums) > 0 {
 				for _, blkNum := range request.BlkNums {
-					log.Info("[Plasma] queue.expire() pushing", "blkNum", blkNum)
 					taskQueue.Push(blkNum, -float32(blkNum))
 				}
 			}
@@ -285,7 +277,6 @@ func (q *queue) resultSlots(pendPool map[string]*fetchRequest, donePool map[uint
 // the cache. the result slice will be empty if the queue has been closed.
 func (q *queue) Results(block bool) types.Blocks {
 	q.lock.Lock()
-	log.Info("[Plasma.queue] lock in Results()")
 	defer q.lock.Unlock()
 
 	// Count the number of items available for processing

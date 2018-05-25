@@ -462,17 +462,13 @@ func (d *Downloader) FetchBlocks(p *peerConnection, blkNums []uint64, kind strin
 			}
 
 		case <-update:
-			log.Info("[Plasma] fetchBlocks case <-update:")
 			// Short circuit if we lost all our peers
 			if d.peers.Len() == 0 {
-				log.Warn("[Plasma] FetchBlock <-update", "err", errNoPeers)
 				return errNoPeers
 			}
-			log.Info("[Plasma] fetchBlocks case <-update:1")
 
 			// Check for fetch request timeouts and demote the responsible peers
 			for pid, fails := range expire() {
-				log.Info("[Plasma] fetchBlocks case <-update:2")
 				if peer := d.peers.Peer(pid); peer != nil {
 					// If a lot of retrieval elements expired, we might have overestimated the remote peer or perhaps
 					// ourselves. Only reset to minimal throughput but don't drop just yet. If even the minimal times
@@ -482,14 +478,14 @@ func (d *Downloader) FetchBlocks(p *peerConnection, blkNums []uint64, kind strin
 					// and latency of a peer separately, which requires pushing the measures capacity a bit and seeing
 					// how response times reacts, to it always requests one more than the minimum (i.e. min 2).
 					if fails > 2 {
-						peer.log.Trace("Data delivery timed out", "type", kind)
+						peer.log.Trace("[Plasma] Data delivery timed out", "type", kind)
 						setIdle(peer, 0)
 					} else {
-						peer.log.Debug("Stalling delivery, dropping", "type", kind)
+						peer.log.Debug("[Plasma] Stalling delivery, dropping", "type", kind)
 						if d.dropPeer == nil {
 							// The dropPeer method is nil when `--copydb` is used for a local copy.
 							// Timeouts can occur if e.g. compaction hits at the wrong time, and can be ignored
-							peer.log.Warn("Downloader wants to drop peer, but peerdrop-function is not set", "peer", pid)
+							peer.log.Warn("[Plasma] Downloader wants to drop peer, but peerdrop-function is not set", "peer", pid)
 						} else {
 							d.dropPeer(pid)
 						}
@@ -497,20 +493,15 @@ func (d *Downloader) FetchBlocks(p *peerConnection, blkNums []uint64, kind strin
 				}
 			}
 
-			log.Info("[Plasma] fetchBlocks case <-update:3", "!inFlight()", !inFlight(), "finished", finished)
-
 			// If there's nothing more to fetch, wait or terminate
 			if pending() == 0 {
-				log.Info("[Plasma] fetchBlocks case <-update:4")
 				if !inFlight() && finished {
-					log.Debug("Data fetching completed", "type", kind)
+					log.Debug("[Plasma] Data fetching completed", "type", kind)
 					return nil
 				}
 				// TODO: activate?
 				break
 			}
-
-			log.Info("[Plasma] fetchBlocks case <-update:5")
 
 			// Send a download request to all idle peers, until throttled
 			progressed, throttled, running := false, false, inFlight()
@@ -531,8 +522,6 @@ func (d *Downloader) FetchBlocks(p *peerConnection, blkNums []uint64, kind strin
 			// Reserve a chunk of fetches for a peer. A nil can mean either that
 			// no more headers are available, or that the peer is known not to
 			// have them.
-			log.Info("[Plasma] capacity(operator)", "capacity(operator)", capacity(operator))
-
 			request, progress, err := reserve(operator, capacity(operator))
 			if err != nil {
 				log.Warn("[Plasma] failed to reserve to peer", "err", err)
@@ -556,15 +545,12 @@ func (d *Downloader) FetchBlocks(p *peerConnection, blkNums []uint64, kind strin
 				panic(fmt.Sprintf("[Plasma] %v: %s fetch assignment failed", operator, kind))
 			}
 			running = true
-			log.Info("[Plasma] fetchBlocks case <-update:6")
 
 			// Make sure that we have peers available for fetching. If all peers have been tried
 			// and all failed throw an error
 			if !progressed && !throttled && !running && pending() > 0 {
-				log.Info("[Plasma] fetchBlocks case <-update:7")
 				return errPeersUnavailable
 			}
-			log.Info("[Plasma] fetchBlocks case <-update:8")
 
 		case <-timeout.C:
 			if d.dropPeer == nil {

@@ -41,7 +41,7 @@ type TxArgs struct {
 
 // setDefaults is a helper function that fills in default values for unspecified tx fields.
 func (args *TxArgs) setDefaults(ctx context.Context, b Backend) error {
-	log.Info("[Plasma api] TxArgs.setDefaults", "args.BlkNum1", args.BlkNum1)
+	log.Info("[Plasma API] TxArgs.setDefaults", "args.BlkNum1", args.BlkNum1)
 	return nil
 }
 

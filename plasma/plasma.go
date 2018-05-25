@@ -476,7 +476,7 @@ func (pls *Plasma) verifyBlock(block *types.Block) error {
 	root2 := res.Root[:]
 
 	if !bytes.Equal(root1, root2) {
-		log.Warn("[Plasma] wrong depsoit block hash", "root1", root1, "root2", root2)
+		// log.Warn("[Plasma] wrong depsoit block hash", "root1", root1, "root2", root2)
 		return invalidBlockHash
 	}
 

@@ -188,7 +188,7 @@ func (bc *BlockChain) VerifyTransaction(tx *types.Transaction) error {
 	}
 
 	if inputAmounts.Cmp(outputAmounts) != 0 {
-		log.Info("[Plasma chain] mismatched amount", "input", inputAmounts, "output", outputAmounts)
+		log.Info("[Plasma Chain] mismatched amount", "input", inputAmounts, "output", outputAmounts)
 		return mismatchedTransactionAmounts
 	}
 

@@ -92,7 +92,6 @@ func NewProtocolManager(config *Config, operator bool, mux *event.TypeMux, block
 		Version: ProtocolVersion,
 		Length:  ProtocolLength,
 		Run: func(p *p2p.Peer, rw p2p.MsgReadWriter) error {
-			log.Info("[Plasma] protocol manager run...")
 			peer := newPeer(p, rw, config)
 			select {
 			case manager.newPeerCh <- peer:
@@ -180,7 +179,6 @@ func (pm *ProtocolManager) Stop() {
 // this function terminates, the peer is disconnected.
 // XXX the life sycle of handle function is same as the p2p connection
 func (pm *ProtocolManager) handle(peer *Peer, config *Config) error {
-	log.Info("[Plasma] manager.handle()")
 	// Check mas peer
 	if pm.peers.Len() >= pm.maxPeers {
 		log.Warn("[Plasma] too many peers")
