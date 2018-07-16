@@ -5,9 +5,8 @@ import (
 	"sync/atomic"
 	"time"
 	// "github.com/ethereum/go-ethereum/common"
-	// "github.com/ethereum/go-ethereum/plasma/types"
-
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/plasma/types"
 	// "github.com/ethereum/go-ethereum/p2p/discover"
 )
 
@@ -19,6 +18,27 @@ const (
 	// A pack can get larger than this if a single transactions exceeds this size.
 	txsyncPackSize = 100 * 1024
 )
+
+type txsync struct {
+	p   *Peer
+	txs []*types.Transaction
+}
+
+// syncTransactions starts sending all currently pending transactions to the given peer.
+func (pm *ProtocolManager) syncTransactions(p *Peer) {
+	// var txs types.Transactions
+	// pending, _ := pm.txpool.Pending()
+	// for _, batch := range pending {
+	// 	txs = append(txs, batch...)
+	// }
+	// if len(txs) == 0 {
+	// 	return
+	// }
+	// select {
+	// case pm.txsyncCh <- &txsync{p, txs}:
+	// case <-pm.quitSync:
+	// }
+}
 
 // syncer is responsible for periodically synchronising with the network, both
 // downloading hashes and blocks as well as handling the announcement handler.

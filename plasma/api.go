@@ -3,8 +3,8 @@ package plasma
 import (
 	"context"
 	"errors"
-	"math/big"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
@@ -135,12 +135,38 @@ func (api *PublicPlasmaAPI) GetBlock(ctx context.Context, BlkNum *hexutil.Big) (
 	return b.ToRPCResponse(), nil
 }
 
-func (api *PublicPlasmaAPI) GetTransaction(ctx context.Context, BlkNum, TxIndex *big.Int) (map[string]interface{}, error) {
-	tx, err := api.pls.blockchain.GetTransaction(BlkNum, TxIndex)
+func (api *PublicPlasmaAPI) GetPendingTransactions(ctx context.Context) ([]map[string]interface{}, error) {
+	txs, err := api.pls.blockchain.GetPendingTransactions()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return txs.ToRPCResponse(), nil
+}
+
+func (api *PublicPlasmaAPI) GetTransaction(ctx context.Context, BlkNum, TxIndex *hexutil.Big) (map[string]interface{}, error) {
+	tx, err := api.pls.blockchain.GetTransaction(BlkNum.ToInt(), TxIndex.ToInt())
 
 	if err != nil {
 		return nil, err
 	}
 
 	return tx.ToRPCResponse(), nil
+}
+
+// Rootchain contract
+func (api *PublicPlasmaAPI) GetChildChain(ctx context.Context, BlkNum *hexutil.Big) (common.Hash, error) {
+	callOpts := bind.CallOpts{
+		Pending: false,
+		Context: api.pls.context,
+	}
+
+	res, err := api.pls.rootchain.ChildChain(&callOpts, BlkNum.ToInt())
+
+	if err != nil {
+		return common.Hash{}, err
+	}
+
+	return common.BytesToHash(res.Root[:]), nil
 }

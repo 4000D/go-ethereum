@@ -339,7 +339,7 @@ func (pls *Plasma) listenDeposit() error {
 
 	sink := make(chan *contract.RootChainDeposit)
 
-	sub, err := filterer.WatchDeposit(&watchOpts, sink)
+	sub, err := filterer.WatchDeposit(&watchOpts, sink, nil, nil)
 
 	if err != nil {
 		return err
@@ -391,7 +391,8 @@ func (pls *Plasma) listenSubmit() error {
 
 	sink := make(chan *contract.RootChainSubmit)
 
-	sub, err := filterer.WatchSubmit(&watchOpts, sink)
+	sub, err := filterer.WatchSubmit(&watchOpts, sink, nil)
+	// sub, err := filterer.WatchSubmit(&watchOpts, sink, []*big.Int{})
 
 	if err != nil {
 		return err
@@ -511,14 +512,22 @@ func (pls *Plasma) higheter() []uint64 {
 	var epochs, blocksToRequest []uint64
 
 	for blkNum := localBlkNum - childBlockInterval; blkNum <= remoteBlkNum-childBlockInterval; blkNum += childBlockInterval {
-		log.Info("[Plasma] adding epochs", "blkNum", blkNum)
 		epochs = append(epochs, blkNum)
+	}
+
+	// return true if target block is already in blockchain
+	hasBlock := func(blkNum uint64) bool {
+		_, err := pls.blockchain.GetBlock(big.NewInt(int64(blkNum)))
+
+		return err == nil
 	}
 
 	for _, blkNum := range epochs {
 		// submit-block
 		if blkNum > 0 {
-			blocksToRequest = append(blocksToRequest, blkNum)
+			if !hasBlock(blkNum) {
+				blocksToRequest = append(blocksToRequest, blkNum)
+			}
 		}
 
 		// deposit-block
@@ -541,8 +550,9 @@ func (pls *Plasma) higheter() []uint64 {
 				break
 			}
 
-			log.Info("[Plasma] add deposit block request queue", "blkNum", depositBlockNumber)
-			blocksToRequest = append(blocksToRequest, depositBlockNumber)
+			if !hasBlock(depositBlockNumber) {
+				blocksToRequest = append(blocksToRequest, depositBlockNumber)
+			}
 		}
 	}
 

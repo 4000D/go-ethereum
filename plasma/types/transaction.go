@@ -33,6 +33,10 @@ type txData struct {
 // Transaction implements Plasma chain transaction
 type Transaction struct {
 	Data txData
+
+	// included in deposit block
+	isDeposit bool
+
 	sig1 []byte
 	sig2 []byte
 
@@ -143,6 +147,7 @@ func (tx *Transaction) DecodeRLP(s *rlp.Stream) error {
 func (tx *Transaction) ToRPCResponse() map[string]interface{} {
 
 	ret := map[string]interface{}{
+		"hash":      tx.Hash(),
 		"blkNum1":   tx.Data.BlkNum1,
 		"txIndex1":  tx.Data.TxIndex1,
 		"oIndex1":   tx.Data.OIndex1,
@@ -166,6 +171,17 @@ func (tx *Transaction) ToRPCResponse() map[string]interface{} {
 		ret["v1"] = tx.sig2[64]
 		ret["r1"] = tx.sig2[0:32]
 		ret["s1"] = tx.sig2[32:64]
+	}
+
+	return ret
+}
+
+func (txs Transactions) ToRPCResponse() []map[string]interface{} {
+
+	ret := make([]map[string]interface{}, len(txs))
+
+	for i, tx := range txs {
+		ret[i] = tx.ToRPCResponse()
 	}
 
 	return ret

@@ -282,6 +282,11 @@ func (d *Downloader) syncWithPeer(p *peerConnection, pBlkNum uint64) (err error)
 
 	// Look up the blocks to fetch from rootchain contract
 	blkNums := d.higheter()
+	if len(blkNums) == 0 {
+		log.Info("[Plasma] No block to synchronise")
+		return nil
+	}
+
 	log.Info("[Plasma] blocks to fetch", "blkNums", blkNums)
 
 	// Initiate the sync using a concurrent header and content retrieval algorithm

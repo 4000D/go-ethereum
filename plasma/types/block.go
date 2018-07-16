@@ -67,6 +67,11 @@ func NewBlock(blkNum *big.Int, txSet []*Transaction, sig []byte) *Block {
 	return &block
 }
 
+func (b *Block) IsDeposit() bool {
+	return len(b.Data.TransactionSet) == 1 && b.Data.TransactionSet[0].Data.BlkNum1.Uint64() == b.NumberU64()
+}
+
+// Seal creates binary merkle tree
 func (b *Block) Seal() (common.Hash, error) {
 	var hashes []common.Hash
 
@@ -79,7 +84,7 @@ func (b *Block) Seal() (common.Hash, error) {
 	b.Merkle = merkle
 
 	if err != nil {
-		return common.HexToHash(""), err
+		return common.Hash{}, err
 	}
 
 	return merkle.Root, nil
@@ -90,9 +95,20 @@ func (b *Block) Hash() common.Hash {
 	if hash := b.hash.Load(); hash != nil {
 		return hash.(common.Hash)
 	}
-	v := b.Merkle.Root
-	b.hash.Store(v)
-	return v
+
+	if b.IsDeposit() {
+		tx := b.Data.TransactionSet[0]
+
+		senderBytes := tx.Data.NewOwner1.Bytes()
+		amountBytes := tx.Data.Amount1.Bytes()
+		amountBytes = common.LeftPadBytes(amountBytes, 32)
+
+		return crypto.Keccak256Hash(senderBytes, amountBytes)
+	} else {
+		v := b.Merkle.Root
+		b.hash.Store(v)
+		return v
+	}
 }
 
 // EncodeRLP implements rlp.Encoder

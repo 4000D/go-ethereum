@@ -35,7 +35,7 @@ type BlockChain struct {
 	currentBlock        *types.Block // block not mined yet
 	currentBlockNumber  *big.Int     // block number of currentBlock
 	blockInterval       *big.Int     // block submitted by operator
-	pendingTransactions []*types.Transaction
+	pendingTransactions types.Transactions
 
 	// Channels
 	newBlock chan *types.Block
@@ -55,7 +55,7 @@ func NewBlockChain(config *Config, verifyBlock blockVerifier) *BlockChain {
 		currentBlock:        &types.Block{},
 		currentBlockNumber:  big.NewInt(1000),
 		blockInterval:       big.NewInt(1000),
-		pendingTransactions: []*types.Transaction{},
+		pendingTransactions: types.Transactions{},
 		newBlock:            make(chan *types.Block, 1),
 		quit:                make(chan struct{}),
 		verifyBlock:         verifyBlock,
@@ -89,6 +89,13 @@ func (bc *BlockChain) GetBlock(blkNum *big.Int) (*types.Block, error) {
 	}
 
 	return b, nil
+}
+
+func (bc *BlockChain) GetPendingTransactions() (types.Transactions, error) {
+	bc.lock.RLock()
+	defer bc.lock.RUnlock()
+
+	return bc.pendingTransactions, nil
 }
 
 func (bc *BlockChain) GetTransaction(blkNum, txIndex *big.Int) (*types.Transaction, error) {
@@ -125,7 +132,7 @@ func (bc *BlockChain) ApplyTransaction(tx *types.Transaction) error {
 	bc.markUtxoSpent(tx.Data.BlkNum1, tx.Data.TxIndex1, tx.Data.OIndex1)
 	bc.markUtxoSpent(tx.Data.BlkNum2, tx.Data.TxIndex2, tx.Data.OIndex2)
 
-	bc.currentBlock.Data.TransactionSet = append(bc.currentBlock.Data.TransactionSet, tx)
+	bc.pendingTransactions = append(bc.pendingTransactions, tx)
 	return nil
 }
 
@@ -250,6 +257,7 @@ func (bc *BlockChain) SubmitBlock(privKey *ecdsa.PrivateKey) (common.Hash, error
 
 	b := bc.currentBlock
 	b.Data.BlockNumber = big.NewInt(bc.currentBlockNumber.Int64())
+	b.Data.TransactionSet = bc.pendingTransactions
 
 	if privKey == nil {
 		privKey = bc.config.OperatorPrivateKey
@@ -260,21 +268,10 @@ func (bc *BlockChain) SubmitBlock(privKey *ecdsa.PrivateKey) (common.Hash, error
 		return common.BytesToHash(nil), err
 	}
 
-	// TODO: verify block from Rootchain contract
-	b.Sign(privKey)
-
-	if sender, err := b.Sender(); err != nil {
-		return common.BytesToHash(nil), err
-	} else {
-		if sender != bc.config.OperatorAddress {
-			log.Warn("[Plasma chain] block sealer and plasma operator not matched", "sealer", sender, "operator", bc.config.OperatorAddress)
-			return common.BytesToHash(nil), invalidOperator
-		}
-	}
-
 	bc.blocks[bc.currentBlockNumber.Uint64()] = bc.currentBlock
 	bc.currentBlockNumber = big.NewInt(0).Add(bc.currentBlockNumber, bc.blockInterval)
 	bc.currentBlock = &types.Block{}
+	bc.pendingTransactions = make(types.Transactions, 0)
 	bc.newBlock <- b
 
 	return b.Hash(), nil
@@ -294,17 +291,12 @@ func (bc *BlockChain) NewDeposit(amount *big.Int, depositor *common.Address, dep
 	transactionSet := []*types.Transaction{tx}
 
 	b := types.NewBlock(depositBlockNumber, transactionSet, nil)
-	b.Seal()
 
-	if err := bc.verifyBlock(b); err != nil {
-		// TODO: activate
-		// return common.Hash{}, err
-	}
-
+	// TODO: save to db
 	bc.blocks[depositBlockNumber.Uint64()] = b
 	bc.newBlock <- b
 
-	log.Info("[Plasma Chain] New Deposit added", "depositBlockNumber", depositBlockNumber)
+	log.Info("[Plasma Chain] New Deposit added", "depositBlockNumber", depositBlockNumber, "blockHash", b.Hash())
 
 	return b.Hash(), nil
 }

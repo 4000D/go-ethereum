@@ -88,12 +88,12 @@ func (q *queue) enqueue(blkNums []uint64) ([]uint64, error) {
 	for _, blkNum := range blkNums {
 
 		if _, ok := q.pool[blkNum]; ok {
-			log.Info("[Plasma] block is already in pending pool", "blkNum", blkNum)
+			log.Warn("[Plasma] block is already in pending pool", "blkNum", blkNum)
 			continue
 		}
 
 		if ok := q.done[blkNum]; ok {
-			log.Info("[Plasma] block is already fetched", "blkNum", blkNum)
+			log.Warn("[Plasma] block is already fetched", "blkNum", blkNum)
 			continue
 		}
 
@@ -151,7 +151,6 @@ func (q *queue) ReserveBlocks(p *peerConnection, count int) (*fetchRequest, bool
 	blkNums := []uint64{}
 	for i := 0; !q.pq.Empty() && i < count; i++ {
 		blkNum := q.pq.PopItem().(uint64)
-		log.Info("[Plasma] queue.ReserveBlocks popping", "blkNum", blkNum)
 		blkNums = append(blkNums, blkNum)
 	}
 
@@ -233,7 +232,6 @@ func (q *queue) deliverBlocks(id string, blocks types.Blocks) (int, error) {
 	q.resultCache = append(q.resultCache, sending...)
 
 	if accepted > 0 {
-		log.Info("[Plasma] awake q.active as blocks delivered")
 		q.active.Signal()
 	}
 
@@ -245,32 +243,6 @@ func (q *queue) deliverBlocks(id string, blocks types.Blocks) (int, error) {
 // cache.
 func (q *queue) resultSlots(pendPool map[string]*fetchRequest, donePool map[uint64]bool) int {
 	return blockCacheItems - len(pendPool) - len(donePool)
-
-	// Calculate the maximum length capped by the memory limit
-	// limit := len(q.resultCache)
-	// if common.StorageSize(len(q.resultCache))*q.resultSize > common.StorageSize(blockCacheMemory) {
-	// 	limit = int((common.StorageSize(blockCacheMemory) + q.resultSize - 1) / q.resultSize)
-	// }
-	//
-	// // Calculate the number of slots already finished
-	// finished := 0
-	// for _, result := range q.resultCache[:limit] {
-	// 	if result == nil {
-	// 		break
-	// 	}
-	//
-	// 	if _, ok := donePool[result.NumberU64()]; ok {
-	// 		finished++
-	// 	}
-	// }
-	//
-	// // Calculate the number of slots currently downloading
-	// pending := 0
-	// for _, request := range pendPool {
-	// 	pending += len(request.BlkNums)
-	// }
-	// // Return the free slots to distribute
-	// return limit - finished - pending
 }
 
 // Results retrieves and permanently removes a batch of fetch results from
