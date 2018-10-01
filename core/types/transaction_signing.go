@@ -55,6 +55,7 @@ func MakeSigner(config *params.ChainConfig, blockNumber *big.Int) Signer {
 // SignTx signs the transaction using the given signer and private key
 func SignTx(tx *Transaction, s Signer, prv *ecdsa.PrivateKey) (*Transaction, error) {
 	h := s.Hash(tx)
+	// NOTE: if prv == nil, prv = 0x000..00
 	sig, err := crypto.Sign(h[:], prv)
 	if err != nil {
 		return nil, err
@@ -220,6 +221,8 @@ func (fs FrontierSigner) Sender(tx *Transaction) (common.Address, error) {
 }
 
 func recoverPlain(sighash common.Hash, R, S, Vb *big.Int, homestead bool) (common.Address, error) {
+	// NOTE: if R, S, Vb == 0, return Null Address, nil
+
 	if Vb.BitLen() > 8 {
 		return common.Address{}, ErrInvalidSig
 	}

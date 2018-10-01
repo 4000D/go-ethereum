@@ -273,6 +273,8 @@ func (ks *KeyStore) SignTx(a accounts.Account, tx *types.Transaction, chainID *b
 	ks.mu.RLock()
 	defer ks.mu.RUnlock()
 
+	// NOTE: if a.Address == Null Address, return types.SignTx(tx, types.NewEIP155Signer(chainID), nil)
+
 	unlockedKey, found := ks.unlocked[a.Address]
 	if !found {
 		return nil, ErrLocked
